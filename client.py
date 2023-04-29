@@ -196,7 +196,7 @@ class GUI:
 	def sendMessage(self):
 		self.textCons.config(state=DISABLED)
 		while True:
-			message = (f"{self.name}: {self.msg}")
+			message = f"{self.msg}"
 			client.send(message.encode("utf-8"))
 			break
 
