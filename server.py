@@ -24,6 +24,7 @@ def accept_wrapper(sock):
 	connections.append(conn)
 	sel.register(conn, events, data=data)
 	global user_id
+	
 	users[conn] = {"id": user_id, "name": "default"}
 	id2name[user_id] = "default"
 	user_id += 1
@@ -48,7 +49,8 @@ def service_connection(key, mask):
 				/exit
 				/messsage [len of group_name] [group_name] [message]
 				/whoami	
-				/rename [len of new_name] [new_name]
+				/rename 
+				[len of new_name] [new_name]
 				
 				/group_list
 				/group_member [len of group_name] [group_name]
@@ -217,7 +219,8 @@ def service_connection(key, mask):
 						recv_data = "/error The name is already taken"
 					else :
 						id2name[user_id] = new_name
-						recv_data = "/success " + username + " " + new_name
+						recv_data = "/success " +len(username)+" "+username+ " "+len(new_name)+" "+username
+						recv_data = recv_data.strip()
 						for conn in connections:
 							if(sock == conn): continue
 							conn.send((f"/broadcast {username} " + new_name).encode())
