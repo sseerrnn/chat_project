@@ -46,7 +46,7 @@ def service_connection(key, mask):
 				/join [len of group_name] [group_name]
 				/leave [len of group_name] [group_name]
 				/exit
-				/messsage [len of group_name] [group_name] [message]
+				/message [len of group_name] [group_name] [message]
 				/whoami	
 				/rename [len of new_name] [new_name]
 				
@@ -233,11 +233,17 @@ def service_connection(key, mask):
 						id2name[user_id] = new_name
 						print(users)
 						recv_data = "/rename success " +str(username_length)+" "+username+ " "+str(new_name_length)+" "+new_name
-						
+
+						online = ""
+						for conn in connections:
+						# if(sock == conn): continue
+							name = users.get(conn).get("name").strip()
+							name_length = len(name.split(" "))
+							online += f" {name_length} {name}"
+
 						for conn in connections:
 							if(sock == conn): continue
-							# conn.send((f"/broadcast online {username_length} {username} {new_name_length} {new_name}").encode())
-							conn.send((f"/broadcast online").encode())
+							conn.send((f"/broadcast online {online}").encode())
 
 			if recv_data:
 				data.outb += recv_data.encode()

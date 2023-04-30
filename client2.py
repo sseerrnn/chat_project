@@ -100,9 +100,11 @@ class GUI:
         self.users_listbox = Listbox(self.users_frame)
         self.users_listbox.pack(fill=BOTH, expand=True)
 
-        self.rename(name)
         
         
+        
+        
+       
         rcv2 = threading.Thread(target=self.receive_msg)
         rcv2.start()
 
@@ -123,8 +125,8 @@ class GUI:
             self.groups_frame)
         self.groups_listbox.pack(fill=BOTH, expand=True)
 
-        for i in range(20):
-            self.groups_listbox.insert(END, f"Group {i}")
+        # for i in range(20):
+        #     self.groups_listbox.insert(END, f"Group {i}")
 
         # Create a button widget to create new group
         self.create_group_button = Button(
@@ -144,17 +146,25 @@ class GUI:
     
     def talk_button_clicked(self):
         selected_item , is_group = self.get_selected_listbox()
+        print(selected_item , " " , is_group)
+        member_list = []
         if is_group :
             name = selected_item
-            self.member_list = []
+            member_list = []
         else :
             name = f"{selected_item} And {self.name}"  
-            member_list = [selected_item , self.name]
+            if selected_item < self.name :
+                member_list = [selected_item , self.name]
+            else :
+                member_list = [self.name , selected_item]
+        # print("member_list : ", member_list)
         self.layout(name = name,member_list = member_list , is_group = is_group)
               
     def layout(self, name, member_list,is_group):
         self.Window.protocol('WM_DELETE_WINDOW', lambda: self.Window.withdraw())
-        if is_group : member_list = self.get_group_member_list(name) 
+        # if is_group : member_list = self.get_group_member_list(name) 
+        print("is_group : ", is_group)
+        print("member_list: ", member_list)
         self.name = name
 
         # Show chat window
@@ -217,22 +227,38 @@ class GUI:
         for i in self.groups_listbox.curselection():
             return (self.groups_listbox.get(i),1) 
     
+    def get_start_page(self):
+        self.rename(self.name)
+        message = client.recv(1024).decode("utf-8")[1:].split()
+        # username_list = util_extract_data_list(message, start_idx=2)
+        
+        self.get_online_list()
+        message = client.recv(1024).decode("utf-8")[1:].split()
+        username_list = util_extract_data_list(message, start_idx=2)
+        self.update_online_list(username_list)
+        self.get_group_list()
+        message = client.recv(1024).decode("utf-8")[1:].split()
+        group_list = util_extract_data_list(message, start_idx = 2)
+        self.update_group_list(group_list)
+    
     
     def receive_msg(self):
-        self.get_online_list()
+        self.get_start_page()
         while True:
             message = client.recv(1024).decode("utf-8")
             print("received message : ",message)
             message = message[1:].split()
             match message[0] :
-                case "broadcast":
+                case "broadcast": #todo : handle broadcast 
                     match message[1]:
                         case "online":
-                            client.send("/online_list".encode("utf-8"))
+                            username_list = util_extract_data_list(message, start_idx=2)
+                            self.update_online_list(username_list)
                         case "massage":
-                            continue
+                            client.send("/")
                         case "group":
-                            self.update_group_list(message[1:])
+                            group_list = util_extract_data_list(message, start_idx = 2)
+                            self.update_group_list(group_list)
                         case _:
                             print("no understandable message found")
                 case "create":
@@ -298,20 +324,24 @@ class GUI:
                         member_list = util_extract_data_list(message, start_idx=2)
                         print(member_list)
                 case "group_list":
-                    pass
-
+                    group_list = util_extract_data_list(message, start_idx = 2)
+                    self.update_group_list(group_list)
                     
-        
+
     def create_group(self):
         group_name = self.group_name_entry.get()
         # Add new group to the listbox
         self.groups_listbox.insert(END, group_name)
         # Clear the group name entry
         self.group_name_entry.delete(0, END)
+        # Send the create group message to the server
+        client.send(f"/create {len(group_name)} {group_name}".encode("utf-8"))
 
     def get_online_list(self):
         try:
             client.send("/online_list".encode("utf-8"))
+            time.sleep(2)
+            
         except:
             pass
 
@@ -326,23 +356,15 @@ class GUI:
     def get_group_list(self):
             try:
                 client.send("/group_list".encode("utf-8"))
+                
             except:
                 pass
 
-    def update_group_list(self, message):
-        print("group_list: ",message)
-
-        if message[0] == "success":
-            result = []
-            current_idx = 1
-            while current_idx < len(message):
-                name = message[current_idx+1 : current_idx + int(message[current_idx]) + 1]
-                current_idx = current_idx + int(message[current_idx]) + 1
-                result.append(" ".join(name))
-            for i in  result :
-                self.groups_listbox.insert(END, f"Group :{i}")
-        print("group result: ",result)       
-        return result 
+    def update_group_list(self, group_list):
+        print("group_list: ",group_list)
+        self.groups_listbox.delete(0,END)
+        for i in  group_list :
+            self.groups_listbox.insert(END, f"group :{i}")
             
     def get_group_member_list(self,group_name):
         try:
