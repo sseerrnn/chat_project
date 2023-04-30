@@ -28,6 +28,11 @@ def accept_wrapper(sock):
 	id2name[user_id] = "default"
 	user_id += 1
 
+	# broadcast to all user
+	for conn_t in connections:
+		if(conn == conn_t): continue
+		conn_t.send(b'/broadcast Online User Changed')
+
 
 def service_connection(key, mask):
 	sock = key.fileobj
@@ -58,7 +63,7 @@ def service_connection(key, mask):
 				command = recv_data[1:].split(" ")
 				if(command[0] == 'create'):
 					group_name_length = int(command[1])
-					group_name = " ".join(command[2:2+group_name_length])
+					group_name = " ".join(command[2:2+group_name_length]).strip()
 					'''
 					group = {
 						name: string
@@ -78,7 +83,7 @@ def service_connection(key, mask):
 
 				elif(command[0] == 'join'):
 					group_name_length = int(command[1])
-					group_name = " ".join(command[2:2+group_name_length])
+					group_name = " ".join(command[2:2+group_name_length]).strip()
 					group = list(filter(lambda group: group.get("name") == group_name, groups))
 					if(len(group) == 0):
 						# Handle group not found
@@ -89,13 +94,14 @@ def service_connection(key, mask):
 							groups[group_index].get("members").append(users.get(sock).get("id"))
 						all_messages = ""
 						for message in groups[group_index].get("messages"):
-							context = message.get("context")
-							all_messages += f" {len(context)} {context}"
+							context = message.get("context").strip()
+							context_length = len(context.split(" "))
+							all_messages += f" {context_length} {context}"
 						recv_data = "/success" + " " + all_messages
 
 				elif(command[0] == 'leave'):
 					group_name_length = int(command[1])
-					group_name = " ".join(command[2:2+group_name_length])
+					group_name = " ".join(command[2:2+group_name_length]).strip()
 					group = list(filter(lambda group: group.get("name") == group_name, groups))
 					if(len(group) == 0):
 						# Handle group not found
@@ -125,6 +131,8 @@ def service_connection(key, mask):
 				# 	if(user_id in id2name):
 				# 		del id2name[user_id]
 				# 	connections.remove(sock)
+					# for conn in connections:
+					# 	conn.send(b'/broadcast Online User Changed')
 				# 	del users[sock]
 				# 	sel.unregister(sock)
 				# 	sock.close()
@@ -133,8 +141,8 @@ def service_connection(key, mask):
 					user_id = users.get(sock).get("id")
 					username = users.get(sock).get("name")
 					group_name_length = int(command[1])
-					group_name = " ".join(command[2:2+group_name_length])
-					message = " ".join(command[2+group_name_length:])
+					group_name = " ".join(command[2:2+group_name_length]).strip()
+					message = " ".join(command[2+group_name_length:]).strip()
 					group = list(filter(lambda group: group.get("name") == group_name, groups))
 					if(len(group) == 0):
 						# Handle group not found
@@ -156,17 +164,19 @@ def service_connection(key, mask):
 
 					
 				elif(command[0] == 'whoami'):
-					name = users.get(sock).get('name')
-					recv_data = f"/success {len(name)} {name}"
+					name = users.get(sock).get('name').strip()
+					name_length = len(name.split(" "))
+					recv_data = f"/success {name_length} {name}"
 
 				
 				elif(command[0] == 'group_list'):
-					group_string = " ".join([group.get("name") for group in groups])
+					group_string = " ".join([group.get("name").strip() for group in groups])
 					recv_data = "/success" + " " + group_string
 					all_group_name = ""
 					for group in groups:
-						group_name = group.get("name")
-						all_group_name += f" {len(group_name)} {group_name}"
+						group_name = group.get("name").strip()
+						group_name_length = len(group_name.split(" "))
+						all_group_name += f" {group_name_length} {group_name}"
 					recv_data = "/success" + all_group_name
 
 				
@@ -174,7 +184,7 @@ def service_connection(key, mask):
 
 				elif(command[0] == 'group_member'):
 					group_name_length = int(command[1])
-					group_name = " ".join(command[2:2+group_name_length])
+					group_name = " ".join(command[2:2+group_name_length]).strip()
 					group = list(filter(lambda group: group.get("name") == group_name, groups))
 					if(len(group) == 0):
 						# Handle group not found
@@ -183,7 +193,8 @@ def service_connection(key, mask):
 						group_index = groups.index(group[0])
 						all_messages = ""
 						for member in groups[group_index].get("members"):
-							mem_name = id2name.get(member)
+							mem_name = id2name.get(member).strip()
+							mem_name_length = len(mem_name.split(" "))
 							all_messages += f" {len(mem_name)} {mem_name}"
 						recv_data = "/success" + all_messages
                         
@@ -192,15 +203,16 @@ def service_connection(key, mask):
 					online = ""
 					for conn in connections:
 						if(sock == conn): continue
-						name = users.get(conn).get("name")
-						online += f" {len(name)} {name}"
+						name = users.get(conn).get("name").strip()
+						name_length = len(name.split(" "))
+						online += f" {name_length} {name}"
 					recv_data = "/success" + online
 
 				elif(command[0] == 'rename'):
 					user_id = users.get(sock).get("id")
-					username = users.get(sock).get("name")
+					username = users.get(sock).get("name").strip()
 					new_name_length = int(command[1])
-					new_name = " ".join(command[2:2+new_name_length])
+					new_name = " ".join(command[2:2+new_name_length]).strip()
 					if(new_name in id2name.values()):
 						recv_data = "/error The name is already taken"
 					else :
@@ -226,6 +238,8 @@ def service_connection(key, mask):
 			if(user_id in id2name):
 				del id2name[user_id]
 			connections.remove(sock)
+			for conn in connections:
+				conn.send(b'/broadcast Online User Changed')
 			del users[sock]
 			sel.unregister(sock)
 			sock.close()
