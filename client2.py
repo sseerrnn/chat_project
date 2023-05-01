@@ -149,16 +149,21 @@ class GUI:
         print(selected_item , " " , is_group)
         member_list = []
         if is_group :
-            name = selected_item
+            group_name = selected_item
             member_list = []
+            self.join_group(group_name)
+            self.layout(name = group_name,member_list = member_list , is_group = is_group)
         else :
-            name = f"{selected_item} And {self.name}"  
             if selected_item < self.name :
                 member_list = [selected_item , self.name]
+                dm_name = f"{selected_item} And {self.name}"  
             else :
                 member_list = [self.name , selected_item]
+                dm_name = f"{self.name} And {selected_item}"
+            self.join_group(dm_name) 
+            self.layout(name = dm_name,member_list = member_list , is_group = is_group)
         # print("member_list : ", member_list)
-        self.layout(name = name,member_list = member_list , is_group = is_group)
+
               
     def layout(self, name, member_list,is_group):
         self.Window.protocol('WM_DELETE_WINDOW', lambda: self.Window.withdraw())
@@ -189,18 +194,18 @@ class GUI:
         self.entryMsg = Entry(self.labelBottom, bg="#2C3E50", fg="#EAECEE", font="Helvetica 13")
 
         # Create a label to display the member list
-        members_label = Label(self.Window, bg="#17202A", fg="#EAECEE", text=f"Members count: {len(member_list)}", font="Helvetica 10 bold", pady=5)
-        members_label.place(relx=0.02, rely=0.05)
+        self.members_label = Label(self.Window, bg="#17202A", fg="#EAECEE", text=f"Members count: {len(member_list)}", font="Helvetica 10 bold", pady=5)
+        self.members_label.place(relx=0.02, rely=0.05)
 
         # Create a text box to display the member list
-        members_textbox = Text(self.Window, width=20, height=3, bg="#17202A", fg="#EAECEE", font="Helvetica 10", padx=5, pady=5)
-        members_textbox.place(relx=0.02, rely=0.1)
+        self.members_textbox = Text(self.Window, width=20, height=3, bg="#17202A", fg="#EAECEE", font="Helvetica 10", padx=5, pady=5)
+        self.members_textbox.place(relx=0.02, rely=0.1)
 
         
 
         # Insert member names into the text box
         for member in member_list:
-            members_textbox.insert(END, member + '\n')
+            self.members_textbox.insert(END, member + '\n')
 
         # Create a Send Button
         self.buttonMsg = Button(self.labelBottom, text="Send", font="Helvetica 10 bold", width=20, bg="#ABB2B9", command=lambda: self.sendButton(self.entryMsg.get()))
@@ -259,6 +264,10 @@ class GUI:
                         case "group":
                             group_list = util_extract_data_list(message, start_idx = 2)
                             self.update_group_list(group_list)
+                        case "join":
+                            self.update_group_member_list(message)
+                            # TODO 
+
                         case _:
                             print("no understandable message found")
                 case "create":
@@ -335,12 +344,16 @@ class GUI:
         # Clear the group name entry
         self.group_name_entry.delete(0, END)
         # Send the create group message to the server
-        client.send(f"/create {len(group_name)} {group_name}".encode("utf-8"))
+        client.send(f"/create {len(group_name.split())} {group_name}".encode("utf-8"))
+    
+    def join_group(self, group_name):
+        # Send the join group message to the server
+        client.send(f"/join {len(group_name.split())} {group_name}".encode("utf-8"))
 
     def get_online_list(self):
         try:
             client.send("/online_list".encode("utf-8"))
-            time.sleep(2)
+
             
         except:
             pass
@@ -364,7 +377,7 @@ class GUI:
         print("group_list: ",group_list)
         self.groups_listbox.delete(0,END)
         for i in  group_list :
-            self.groups_listbox.insert(END, f"group :{i}")
+            self.groups_listbox.insert(END, f"{i}")
             
     def get_group_member_list(self,group_name):
         try:
@@ -372,8 +385,10 @@ class GUI:
         except:
             pass
 
-    def update_group_member_list(self, message):
-        pass
+    def update_group_member_list(self, group_member):
+        self.members_textbox.delete('1.0', END)
+        for member in group_member:
+            self.members_textbox.insert(END, member + '\n')
             
     def rename(self,name):
         try:

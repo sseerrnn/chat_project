@@ -85,12 +85,25 @@ def service_connection(key, mask):
 
 					group = {
 						"name": group_name,
-						"owner": users.get(sock).get("id"),
-						"members": [users.get(sock).get("id")],
-						"messages": [],
+						"owner": str(users.get(sock).get("id")),
+						"members": [str(users.get(sock).get("id"))],
+						# mock msg
+						"messages": [{"context": "Welcome to " + group_name, "date": datetime.now(), "sender": str(users.get(sock).get("id"))}],
 						"public": public
 					}
 					groups.append(group)
+
+					if(command[0] == 'create') :
+						# broadcast to all user
+						all_group_name = ""
+						for group in groups:
+							if(group.get("public") == False) : continue
+							group_name = group.get("name").strip()
+							group_name_length = len(group_name.split(" "))
+							all_group_name += f" {group_name_length} {group_name}"
+						for conn in connections:
+							if(conn == sock) : continue
+							conn.send(f'/broadcast group {all_group_name}'.encode())
 
 				elif(command[0] == 'join'):
 					group_name_length = int(command[1])
@@ -101,8 +114,8 @@ def service_connection(key, mask):
 						recv_data = "/join error Group not found"
 					else :
 						group_index = groups.index(group[0])
-						if(group[0].get("owner") != users.get(sock).get("id") and  users.get(sock).get("id") not in group[0].get("members")) :
-							groups[group_index].get("members").append(users.get(sock).get("id"))
+						if(group[0].get("owner") != str(users.get(sock).get("id")) and  str(users.get(sock).get("id")) not in group[0].get("members")) :
+							groups[group_index].get("members").append(str(users.get(sock).get("id")))
 						all_messages = ""
 						for message in groups[group_index].get("messages"):
 							context = message.get("context").strip()
@@ -111,6 +124,17 @@ def service_connection(key, mask):
 							context_length = len(context.split(" "))
 							all_messages += f" {context_length} {context} {username_length} {username}"
 						recv_data = "/join success" + " " + all_messages
+						# get all group member
+						all_messages = ""
+						for member in groups[group_index].get("members"):
+							mem_name = id2name.get(member).strip()
+							mem_name_length = len(mem_name.split(" "))
+							all_messages += f" {mem_name_length} {mem_name}"
+						# broadcast to group member
+						for conn in connections:
+							# if(conn == sock) : continue
+							conn.send(f'/broadcast message {all_messages}'.encode())
+						
 
 				elif(command[0] == 'leave'):
 					group_name_length = int(command[1])
@@ -119,16 +143,16 @@ def service_connection(key, mask):
 					if(len(group) == 0):
 						# Handle group not found
 						recv_data = "/leave error Group not found"
-					elif(users.get(sock).get("id") not in group[0].get("members")):
+					elif(str(users.get(sock).get("id")) not in group[0].get("members")):
 						recv_data = "/leave error The user is not in this group"
 					else :
 						group_index = groups.index(group[0])
-						if groups[group_index].get("owner") == users.get(sock).get("id"):
+						if groups[group_index].get("owner") == str(users.get(sock).get("id")):
 							groups.remove(group[0])
 							recv_data = "/leave success"
 							# TODO broadcast to close group chat window
 						else:
-							groups[group_index].get("members").remove(users.get(sock).get("id"))
+							groups[group_index].get("members").remove(str(users.get(sock).get("id")))
 							recv_data = "/leave success"
 							# TODO broadcast to update group member
 						
@@ -153,7 +177,7 @@ def service_connection(key, mask):
 				# 	sock.close()
 
 				elif(command[0] == 'message'):
-					user_id = users.get(sock).get("id")
+					user_id = str(users.get(sock).get("id"))
 					username = users.get(sock).get("name").strip()
 					username_length = len(username.split(" "))
 					group_name_length = int(command[1])
@@ -163,7 +187,7 @@ def service_connection(key, mask):
 					if(len(group) == 0):
 						# Handle group not found
 						recv_data = "/message error Group not found"
-					elif(group[0].get("owner") != users.get(sock).get("id") and users.get(sock).get("id") not in group[0].get("members")):
+					elif(group[0].get("owner") != str(users.get(sock).get("id")) and str(users.get(sock).get("id")) not in group[0].get("members")):
 						# Handle owner join own group
 						recv_data = "/message error The user is not a member or owner of the group"
 					else :
@@ -221,7 +245,7 @@ def service_connection(key, mask):
 					recv_data = "/online_list success" + online
 
 				elif(command[0] == 'rename'):
-					user_id = users.get(sock).get("id")
+					user_id = str(users.get(sock).get("id"))
 					username = users.get(sock).get("name").strip()
 					username_length = len(username.split(" "))
 					new_name_length = int(command[1])
@@ -244,13 +268,14 @@ def service_connection(key, mask):
 						for conn in connections:
 							if(sock == conn): continue
 							conn.send((f"/broadcast online {online}").encode())
-
+				else :
+					exit()
 			if recv_data:
 				data.outb += recv_data.encode()
 		except Exception as e:
 			print(e)
 			print('Closing connection to', data.addr)
-			user_id = users.get(sock).get("id")
+			user_id = str(users.get(sock).get("id"))
 			group_list = list(filter(lambda group:  user_id in group.get("members") or user_id == group.get("owner") , groups))
 			for group in group_list :
 				group_index = groups.index(group)
