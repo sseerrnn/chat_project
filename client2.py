@@ -141,23 +141,19 @@ class GUI:
             pass
         else:
             selected_item , is_group = self.get_selected_listbox()
-            if self.name != selected_item[:len(self.name)]:
+            if is_group :
+                group_name = selected_item
+                self.group_name = group_name
                 self.member_list = []
-                if is_group :
-                    group_name = selected_item
-                    self.group_name = group_name
-                    self.member_list = []
-                    self.layout(name = group_name,member_list = self.member_list , is_group = is_group)
-                    self.join_group(group_name)
-                    
-                else :
-                    self.member_list = sorted([selected_item,self.name])
-                    # 
-                    dm_name = f"{self.member_list[0]}_{self.member_list[1]}"
-                    print("dm_name_after : ",dm_name)
-                    self.group_name = dm_name 
-                    self.layout(name = dm_name,member_list = self.member_list , is_group = is_group)
-                    self.join_dm(dm_name,selected_item)
+                self.layout(name = group_name,member_list = self.member_list , is_group = is_group)
+                self.join_group(group_name)
+            elif self.name != selected_item[:len(self.name)]:
+                self.member_list = sorted([selected_item,self.name])
+                dm_name = f"{self.member_list[0]}_{self.member_list[1]}"
+                print("dm_name_after : ",dm_name)
+                self.group_name = dm_name 
+                self.layout(name = dm_name,member_list = self.member_list , is_group = is_group)
+                self.join_dm(dm_name,selected_item)
             else :
                 print("You can't talk to yourself")
         # print("member_list : ", member_list)
@@ -382,32 +378,6 @@ class GUI:
     def update_message(self, message_context, message_sender):
         self.textCons.config(state=NORMAL)
         if self.name == message_sender:
-            # length = " " * 20
-            length_message = len(message_context)
-            current_length = 0
-            length = " " * 20
-            tmp = " " * 20
-            # while(length_message):
-            #     # t_message = ""
-            #     # if current_length + 20 <= len(message_context):
-            #     #     t_message = message_context[current_length:current_length+20]
-            #     # else :
-            #     #     t_message = message_context[current_length:]
-            #     # current_length += 20
-
-            #     if length_message < 20 :
-            #         tmp2 = " " * (20 - length_message)
-            #         self.textCons.insert(END,f"{tmp}{tmp2}{message_context}\n")
-            #         print(f"{tmp}{tmp2}{message_context}")
-            #         length_message = 0
-            #     else :
-            #         print(f"{tmp}{message_context[:20]}")
-            #         message_context = message_context[20:]
-            #         self.textCons.insert(END,f"{tmp}{message_context}\n")
-            #         length_message -= 20
-            #     # self.textCons.insert(END, f"{length}{message_context}\n\n",justify="right")
-            #     # message_context = message_context 
-            #     # length_message -= 
             self.textCons.tag_config('right', justify='right', rmargin=16)
             self.textCons.insert(END, f"{message_context}\n\n","right")
             # self.textCons.insert(END,"\n")
