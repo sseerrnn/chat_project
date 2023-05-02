@@ -24,9 +24,9 @@ def accept_wrapper(sock):
 	sel.register(conn, events, data=data)
 	global user_id
 	
-	users[conn] = {"id": user_id, "name": "default"}
+	users[conn] = {"id": user_id, "name": str(user_id)}
 	queue[conn] = []
-	id2name[user_id] = "default"
+	id2name[user_id] = str(user_id)
 	user_id += 1
 
 	# # broadcast to all user
@@ -96,7 +96,7 @@ def service_connection(key, mask):
 							"owner": str(users.get(sock).get("id")),
 							"members": [str(users.get(sock).get("id"))],
 							# mock msg
-							"messages": [{"context": group_name + "group chat is created.", "date": datetime.now(), "sender": str(users.get(sock).get("id"))}],
+							"messages": [{"context": group_name + " group chat is created.", "date": datetime.now(), "sender": str(users.get(sock).get("id"))}],
 							"public": True
 						}
 						groups.append(group)
@@ -211,7 +211,7 @@ def service_connection(key, mask):
 									group_name_length = len(group_name.split(" "))
 									all_group_name += f" {group_name_length} {group_name}"
 								for conn in connections:
-									if(conn == sock) : continue
+									# if(conn == sock) : continue
 									conn.send(f'/broadcast group {all_group_name}'.encode())
 							else:
 								# get all group member
@@ -346,6 +346,7 @@ def service_connection(key, mask):
 								name_length = len(name.split(" "))
 								online += f" {name_length} {name}"
 
+							# queue[sock].append(f"/broadcast online {online}");
 							for conn in connections:
 								if(sock == conn): continue
 								conn.send((f"/broadcast online {online}").encode())
@@ -365,20 +366,18 @@ def service_connection(key, mask):
 					groups.remove(group)
 				else :
 					groups[group_index].get("members").remove(user_id)
+			online = ""
+			for conn in connections:
+				if(sock == conn): continue
+				name = users.get(conn).get("name").strip()
+				name_length = len(name.split(" "))
+				online += f" {name_length} {name}"
 			if(user_id in id2name):
 				del id2name[user_id]
 			connections.remove(sock)
 			del users[sock]
 			sel.unregister(sock)
 			sock.close()
-			online = ""
-			for conn in connections:
-				# if(sock == conn): continue
-				name = users.get(conn).get("name").strip()
-				name_length = len(name.split(" "))
-				online += f" {name_length} {name}"
-			# recv_data = "/online_list success" + online
-			queue[sock].append("/online_list success" + online)
 
 	if mask & selectors.EVENT_WRITE: # Should be ready to write
 		if data.outb or len(queue[sock]) > 0:

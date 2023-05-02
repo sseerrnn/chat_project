@@ -97,7 +97,7 @@ class GUI:
         self.users_label.pack(side=TOP, padx=5, pady=5)
         self.users_listbox = Listbox(self.users_frame)
         self.users_listbox.pack(fill=BOTH, expand=True)
-
+        
         
         
         
@@ -128,39 +128,48 @@ class GUI:
         self.selected_listbox = Button(
             self.root, text='talk', command=self.talk_button_clicked)
         self.selected_listbox.pack(side=BOTTOM, padx=5, pady=5, expand=True)
+        self.textCons = Text(self.Window, width=20, height=2, bg="#17202A", fg="#EAECEE", font="Helvetica 14", padx=5, pady=5)
 
         # for tag user
         # self.users_listbox.itemconfig(0, bg="yellow")
+        
         self.root.mainloop()
     
     def talk_button_clicked(self):
-        selected_item , is_group = self.get_selected_listbox()
-        print("this: ",selected_item , " " , is_group)
-        self.member_list = []
-        if is_group :
-            group_name = selected_item
-            self.group_name = group_name
-            self.member_list = []
-            self.layout(name = group_name,member_list = self.member_list , is_group = is_group)
-            self.join_group(group_name)
-            
-        else :
-            self.member_list = sorted([selected_item,self.name])
-            # 
-            dm_name = f"{self.member_list[0]}_{self.member_list[1]}"
-            print("dm_name_after : ",dm_name)
-            self.group_name= dm_name 
-            self.layout(name = dm_name,member_list = self.member_list , is_group = is_group)
-            self.join_dm(dm_name,selected_item)
+        if not self.users_listbox.curselection() and not self.groups_listbox.curselection():
+            print("Please select listbox")
+            pass
+        else:
+            selected_item , is_group = self.get_selected_listbox()
+            if self.name != selected_item[:len(self.name)]:
+                self.member_list = []
+                if is_group :
+                    group_name = selected_item
+                    self.group_name = group_name
+                    self.member_list = []
+                    self.layout(name = group_name,member_list = self.member_list , is_group = is_group)
+                    self.join_group(group_name)
+                    
+                else :
+                    self.member_list = sorted([selected_item,self.name])
+                    # 
+                    dm_name = f"{self.member_list[0]}_{self.member_list[1]}"
+                    print("dm_name_after : ",dm_name)
+                    self.group_name = dm_name 
+                    self.layout(name = dm_name,member_list = self.member_list , is_group = is_group)
+                    self.join_dm(dm_name,selected_item)
+            else :
+                print("You can't talk to yourself")
         # print("member_list : ", member_list)
 
               
     def layout(self, name, member_list,is_group):
         self.Window.protocol('WM_DELETE_WINDOW', lambda: self.Window.withdraw())
+        
         # if is_group : member_list = self.get_group_member_list(name) 
         print("is_group : ", is_group)
         print("member_list: ", member_list)
-        self.group_name = name
+
 
         # Show chat window
         self.Window.deiconify()
@@ -176,7 +185,6 @@ class GUI:
         self.textCons = Text(self.Window, width=20, height=2, bg="#17202A", fg="#EAECEE", font="Helvetica 14", padx=5, pady=5)
         self.textCons.place(relheight=0.745, relwidth=1, rely=0.08)
         self.textCons.configure(cursor="arrow", state=DISABLED)
-        
         # Create a Scrollbar for the text box
         scrollbar = Scrollbar(self.textCons)
         scrollbar.place(relheight=1, relx=0.974)
@@ -209,9 +217,14 @@ class GUI:
         self.buttonMsg.place(relx=0.77, rely=0.008, relheight=0.06, relwidth=0.22)
         
         # Create a button to leave the group
+        
         self.leave_group_button = Button(self.labelHead, text="Leave Group", font="Helvetica 10 bold", width=10,height=1, bg="#ABB2B9", command=lambda: self.leave_group(self.group_name))
-        self.leave_group_button.place(
-            relx=0.8, rely=0.15 )
+        if (not is_group) : 
+            self.leave_group_button.place(
+            relx=2, rely=2 )
+        else :
+            self.leave_group_button.place(
+                    relx=0.8, rely=0.15 )
 
         
 
@@ -234,27 +247,37 @@ class GUI:
         """
         Returns the value of the item currently selected in the given listbox.
         """
+        
         for i in self.users_listbox.curselection():
             return (self.users_listbox.get(i),0)
-        
+    
         for i in self.groups_listbox.curselection():
             return (self.groups_listbox.get(i),1) 
-    
+        
     def get_start_page(self):
         self.rename(self.name)
         message = client.recv(1024).decode("utf-8")[1:].split()
-        self.get_online_list()
-        message = client.recv(1024).decode("utf-8")[1:].split()
-        username_list = util_extract_data_list(message, start_idx=2)
-        self.update_online_list(username_list)
+        while(message[0] == "broadcast"):
+            message = client.recv(1024).decode("utf-8")[1:].split()
+
         self.get_group_list()
         message = client.recv(1024).decode("utf-8")[1:].split()
+        while(message[0] == "broadcast"):
+            message = client.recv(1024).decode("utf-8")[1:].split()
         group_list = util_extract_data_list(message, start_idx = 2)
         self.update_group_list(group_list)
+
+        self.get_online_list()
+        message = client.recv(1024).decode("utf-8")[1:].split()
+        while(message[0] == "broadcast"):
+            message = client.recv(1024).decode("utf-8")[1:].split()
+        username_list = util_extract_data_list(message, start_idx=2)
+        self.update_online_list(username_list)
     
     
     def receive_msg(self):
         self.get_start_page()
+        # self.get_online_list()
         while True:
             message = client.recv(1024).decode("utf-8")
             print("received message : ",message)
@@ -268,20 +291,16 @@ class GUI:
                         case "message":
                             # f"/broadcast message {group_name_length} {group_name} {username_length} {username} {len(message.split(' '))}" + message
                             # TODO insert received message to chat box
-                            print("broadcast message")
                             self.textCons.config(state = NORMAL)
-                            print(message)
                             extracted_data = util_extract_data_list(message, start_idx=2)
-                            print(extracted_data)
                             sender = extracted_data[1]
                             text_massage = extracted_data[2]
-                            self.textCons.insert(END,f"{sender}:{text_massage}" + "\n\n")
+                            self.update_message(text_massage,sender)
                         case "group":
                             group_list = util_extract_data_list(message, start_idx = 2)
                             self.update_group_list(group_list)
                         case "join":
                             extracted_data = util_extract_data_list(message , start_idx=2)
-                            print("join ",extracted_data)
                             self.update_group_member_list(extracted_data)
                             # TODO 
                         
@@ -356,25 +375,58 @@ class GUI:
                         pass
                     else :
                         member_list = util_extract_data_list(message, start_idx=2)
-                        print(member_list)
                 case "group_list":
                     group_list = util_extract_data_list(message, start_idx = 2)
                     self.update_group_list(group_list)
                     
     def update_message(self, message_context, message_sender):
         self.textCons.config(state=NORMAL)
-        self.textCons.insert(END, f"{message_sender} : {message_context}\n\n")
+        if self.name == message_sender:
+            # length = " " * 20
+            length_message = len(message_context)
+            current_length = 0
+            length = " " * 20
+            tmp = " " * 20
+            # while(length_message):
+            #     # t_message = ""
+            #     # if current_length + 20 <= len(message_context):
+            #     #     t_message = message_context[current_length:current_length+20]
+            #     # else :
+            #     #     t_message = message_context[current_length:]
+            #     # current_length += 20
+
+            #     if length_message < 20 :
+            #         tmp2 = " " * (20 - length_message)
+            #         self.textCons.insert(END,f"{tmp}{tmp2}{message_context}\n")
+            #         print(f"{tmp}{tmp2}{message_context}")
+            #         length_message = 0
+            #     else :
+            #         print(f"{tmp}{message_context[:20]}")
+            #         message_context = message_context[20:]
+            #         self.textCons.insert(END,f"{tmp}{message_context}\n")
+            #         length_message -= 20
+            #     # self.textCons.insert(END, f"{length}{message_context}\n\n",justify="right")
+            #     # message_context = message_context 
+            #     # length_message -= 
+            self.textCons.tag_config('right', justify='right', rmargin=16)
+            self.textCons.insert(END, f"{message_context}\n\n","right")
+            # self.textCons.insert(END,"\n")
+        else : 
+            self.textCons.insert(END, f"{message_sender} : {message_context}\n\n")
+        
         
     def create_group(self):
         self.group_name = self.group_name_entry.get()
         # Add new group to the listbox
-        self.groups_listbox.insert(END, self.group_name)
-        # Clear the group name entry
-        self.group_name_entry.delete(0, END)
-        # Send the create group message to the server  
-        length_group = self.group_name.split()
-        client.send(f"/create {len(length_group)} {self.group_name}".encode("utf-8"))
-    
+        if len(self.group_name):
+            self.groups_listbox.insert(END, self.group_name)
+            # Clear the group name entry
+            self.group_name_entry.delete(0, END)
+            # Send the create group message to the server  
+            length_group = self.group_name.split()
+            client.send(f"/create {len(length_group)} {self.group_name}".encode("utf-8"))
+        else :
+            print("group name must be string")
     def join_group(self, group_name):
         # Send the join group message to the server
         client.send(f"/join {len(group_name.split())} {group_name}".encode("utf-8"))
@@ -384,6 +436,7 @@ class GUI:
         client.send(req.encode("utf-8"))
 
     def leave_group(self, group_name):
+        self.Window.withdraw()
         client.send(f"/leave {len(group_name.split())} {group_name}".encode("utf-8"))
 
     def get_online_list(self):
@@ -426,7 +479,8 @@ class GUI:
         for member in group_member:
             self.members_textbox.insert(END, member + '\n')
         self.members_textbox.configure(state=DISABLED)
-        self.members_label.configure(text=f"Members ({len(group_member)})")
+        self.members_label.configure(text=f"Members count: {len(group_member)}")
+        
             
     def rename(self,name):
         try:
@@ -439,7 +493,7 @@ class GUI:
         self.textCons.insert(END, f"{message_sender} : {message_context}\n\n")
         self.textCons.config(state=DISABLED)
         self.textCons.see(END)
-        
+    
 
 
 # create a GUI class object
