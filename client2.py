@@ -6,7 +6,7 @@ from tkinter import *
 from tkinter import font, ttk
 
 PORT = 21630
-HOST = "127.0.0.1"
+HOST = "172.20.10.8"
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((HOST, PORT))

@@ -4,7 +4,7 @@ import types
 from datetime import datetime
 
 PORT = 21630
-HOST = "127.0.0.1"
+HOST = "172.20.10.8"
 
 connections = []
 user_id = 1
