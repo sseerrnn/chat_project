@@ -1,4 +1,4 @@
 # chat_project
-# to start project
-! server.py
-! client.py
+to start project
+- server.py
+- client.py
