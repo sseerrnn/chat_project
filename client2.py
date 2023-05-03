@@ -459,10 +459,12 @@ class GUI:
         except:
             pass
     def update_join(self,message_context,message_sender):
-        self.textCons.config(state=NORMAL)
-        self.textCons.insert(END, f"{message_sender} : {message_context}\n\n")
-        self.textCons.config(state=DISABLED)
-        self.textCons.see(END)
+        # self.textCons.config(state=NORMAL)
+        # self.textCons.insert(END, f"{message_sender} : {message_context}\n\n")
+        # self.textCons.config(state=DISABLED)
+        # self.textCons.see(END)
+        self.update_message(message_context, message_sender)
+
     
 
 
